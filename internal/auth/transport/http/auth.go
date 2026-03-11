@@ -60,7 +60,7 @@ func (c *AuthController) Register(w http.ResponseWriter, r *http.Request) {
 
 	response := dto.ToTokenResponse(tokens)
 
-	http2.WriteResponse(w, http.StatusOK, response)
+	http2.WriteResponse(w, http.StatusCreated, response)
 }
 
 func (c *AuthController) RefreshTokens(w http.ResponseWriter, r *http.Request) {
