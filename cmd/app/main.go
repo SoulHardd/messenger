@@ -4,11 +4,13 @@ import (
 	JWTService "D/Go/messenger/internal/auth/jwt"
 	authSessionRepository "D/Go/messenger/internal/auth/repository/session"
 	authUserRepository "D/Go/messenger/internal/auth/repository/user"
-	authService "D/Go/messenger/internal/auth/service"
+	authSrvc "D/Go/messenger/internal/auth/service"
 	authController "D/Go/messenger/internal/auth/transport/http"
 	"D/Go/messenger/internal/platform/config"
 	"D/Go/messenger/internal/platform/database/connections"
 	"D/Go/messenger/internal/platform/httpserver"
+	"D/Go/messenger/internal/platform/jwt"
+	authMW "D/Go/messenger/internal/platform/middleware/auth"
 	"context"
 	"log"
 	"os/signal"
@@ -28,12 +30,15 @@ func main() {
 	authUserRepo := authUserRepository.New(pool)
 	authSessionRepo := authSessionRepository.New(pool, cfg.JWTCfg.RefreshTokenTTL)
 	jwtService := JWTService.New(cfg.JWTCfg.Secret, cfg.JWTCfg.AccessTokenTTL)
-	authS := authService.New(authUserRepo, authSessionRepo, jwtService)
-	authC := authController.New(authS)
+	authService := authSrvc.New(authUserRepo, authSessionRepo, jwtService)
+	authCtrl := authController.New(authService)
 
-	srv := httpserver.New(cfg.ServerCfg, pool, authC)
+	jwtVerifier := jwt.NewVerifier(cfg.JWTCfg.Secret)
+	authMiddleware := authMW.Auth(jwtVerifier)
 
-	authS.StartMonitorSessions(appCtx, cfg.TimeCfg.TokensMonitorInterval)
+	srv := httpserver.New(cfg.ServerCfg, pool, authCtrl, authMiddleware)
+
+	authService.StartMonitorSessions(appCtx, cfg.TimeCfg.TokensMonitorInterval)
 
 	srv.ListenAndServe()
 

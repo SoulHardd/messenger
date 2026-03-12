@@ -3,6 +3,7 @@ package httpserver
 import (
 	http2 "D/Go/messenger/internal/auth/transport/http"
 	"D/Go/messenger/internal/platform/config"
+	authMW "D/Go/messenger/internal/platform/middleware/auth"
 	"errors"
 	"fmt"
 	"log"
@@ -17,12 +18,14 @@ type Server struct {
 	r       *chi.Mux
 	cfg     *config.ServerConfig
 	db      *pgxpool.Pool
+	authMW  authMW.AuthMiddleware
 }
 
 func New(
 	cfg *config.ServerConfig,
 	pool *pgxpool.Pool,
 	auth *http2.AuthController,
+	authMiddleware authMW.AuthMiddleware,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -31,11 +34,13 @@ func New(
 			Addr:    fmt.Sprintf(":%d", cfg.Port),
 			Handler: r,
 		},
-		r:   r,
-		cfg: cfg,
-		db:  pool,
+		r:      r,
+		cfg:    cfg,
+		db:     pool,
+		authMW: authMiddleware,
 	}
-	s.setAuthRoutes(auth)
+
+	s.setAuthRoutes(auth, authMiddleware)
 	return s
 }
 
@@ -48,7 +53,8 @@ func (s *Server) ListenAndServe() {
 	}()
 }
 
-func (s *Server) setAuthRoutes(auth *http2.AuthController) {
+func (s *Server) setAuthRoutes(auth *http2.AuthController, authMiddleware authMW.AuthMiddleware) {
+	s.r.Use(authMiddleware)
 	s.r.Head("/healthcheck", HealthCheck)
 	s.r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", auth.Login)
