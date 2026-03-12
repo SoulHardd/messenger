@@ -1,4 +1,4 @@
-package http
+package httpx
 
 import (
 	"encoding/json"
@@ -16,13 +16,13 @@ func WriteResponse(w http.ResponseWriter, statusCode int, response interface{}) 
 	}
 }
 
-func WriteErrorResponse(w http.ResponseWriter, err interface{}) {
+func WriteErrorResponse(w http.ResponseWriter, err interface{}, mapper DomainErrorMapper) {
 	if httpErr, ok := err.(HTTPError); ok {
 		http.Error(w, httpErr.Message, httpErr.Code)
 		return
 	}
 	if domainErr, ok := err.(error); ok {
-		httpErr := MapDomainError(domainErr)
+		httpErr := mapper.MapDomainError(domainErr)
 		http.Error(w, httpErr.Message, httpErr.Code)
 		return
 	}
