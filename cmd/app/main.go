@@ -1,20 +1,27 @@
 package main
 
 import (
-	JWTService "D/Go/messenger/internal/auth/jwt"
-	authSessionRepository "D/Go/messenger/internal/auth/repository/session"
-	authUserRepository "D/Go/messenger/internal/auth/repository/user"
-	authSrvc "D/Go/messenger/internal/auth/service"
-	authController "D/Go/messenger/internal/auth/transport/http"
 	"D/Go/messenger/internal/platform/config"
 	"D/Go/messenger/internal/platform/database/connections"
 	"D/Go/messenger/internal/platform/httpserver"
 	"D/Go/messenger/internal/platform/jwt"
-	authMW "D/Go/messenger/internal/platform/middleware/auth"
 	"context"
 	"log"
 	"os/signal"
 	"syscall"
+
+	JWTService "D/Go/messenger/internal/auth/jwt"
+	authSessionRepository "D/Go/messenger/internal/auth/repository/session"
+	authUserRepository "D/Go/messenger/internal/auth/repository/user"
+	authSrvc "D/Go/messenger/internal/auth/service"
+	authCtrl "D/Go/messenger/internal/auth/transport/http"
+
+	authMW "D/Go/messenger/internal/platform/middleware/auth"
+
+	profileRepository "D/Go/messenger/internal/user/repository/profile"
+	userRepository "D/Go/messenger/internal/user/repository/user"
+	userSrvc "D/Go/messenger/internal/user/service"
+	userCtrl "D/Go/messenger/internal/user/transport/http"
 )
 
 func main() {
@@ -31,19 +38,24 @@ func main() {
 	authSessionRepo := authSessionRepository.New(pool, cfg.JWTCfg.RefreshTokenTTL)
 	jwtService := JWTService.New(cfg.JWTCfg.Secret, cfg.JWTCfg.AccessTokenTTL)
 	authService := authSrvc.New(authUserRepo, authSessionRepo, jwtService)
-	authCtrl := authController.New(authService)
+	authController := authCtrl.New(authService)
+
+	userRepo := userRepository.New(pool)
+	profileRepo := profileRepository.New(pool)
+	userService := userSrvc.New(userRepo, profileRepo)
+	userController := userCtrl.New(userService)
 
 	jwtVerifier := jwt.NewVerifier(cfg.JWTCfg.Secret)
 	authMiddleware := authMW.Auth(jwtVerifier)
 
-	srv := httpserver.New(cfg.ServerCfg, pool, authCtrl, authMiddleware)
+	srv := httpserver.New(cfg.ServerCfg, pool, authController, authMiddleware, userController)
 
 	authService.StartMonitorSessions(appCtx, cfg.TimeCfg.TokensMonitorInterval)
 
 	srv.ListenAndServe()
 
 	<-shutdownCtx.Done()
-	log.Printf("Shutting down service-courier")
+	log.Printf("Shutting down...")
 	gsCtx, gsCancel := context.WithTimeout(context.Background(), cfg.TimeCfg.ShutdownTimeout)
 	defer gsCancel()
 

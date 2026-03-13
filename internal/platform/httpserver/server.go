@@ -1,9 +1,10 @@
 package httpserver
 
 import (
-	http2 "D/Go/messenger/internal/auth/transport/http"
+	httpAuth "D/Go/messenger/internal/auth/transport/http"
 	"D/Go/messenger/internal/platform/config"
 	authMW "D/Go/messenger/internal/platform/middleware/auth"
+	httpUser "D/Go/messenger/internal/user/transport/http"
 	"errors"
 	"fmt"
 	"log"
@@ -24,8 +25,9 @@ type Server struct {
 func New(
 	cfg *config.ServerConfig,
 	pool *pgxpool.Pool,
-	auth *http2.AuthController,
+	auth *httpAuth.AuthController,
 	authMiddleware authMW.AuthMiddleware,
+	user *httpUser.UserController,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -40,7 +42,8 @@ func New(
 		authMW: authMiddleware,
 	}
 
-	s.setAuthRoutes(auth, authMiddleware)
+	s.setAuthRoutes(auth)
+	s.setUserRoutes(user, authMiddleware)
 	return s
 }
 
@@ -53,12 +56,23 @@ func (s *Server) ListenAndServe() {
 	}()
 }
 
-func (s *Server) setAuthRoutes(auth *http2.AuthController, authMiddleware authMW.AuthMiddleware) {
-	s.r.Use(authMiddleware)
-	s.r.Head("/healthcheck", HealthCheck)
-	s.r.Route("/auth", func(r chi.Router) {
-		r.Post("/login", auth.Login)
-		r.Post("/register", auth.Register)
-		r.Post("/refresh", auth.RefreshTokens)
+func (s *Server) setAuthRoutes(auth *httpAuth.AuthController) {
+	s.r.Route("/api/v1", func(r chi.Router) {
+		r.Head("/healthcheck", HealthCheck)
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", auth.Login)
+			r.Post("/register", auth.Register)
+			r.Post("/refresh", auth.RefreshTokens)
+		})
+	})
+}
+
+func (s *Server) setUserRoutes(user *httpUser.UserController, authMiddleware authMW.AuthMiddleware) {
+	s.r.Route("/api/v1/user", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Get("/me", user.GetMe)
+		r.Patch("/me", user.UpdateProfile)
+		r.Get("/{login}", user.GetByLogin)
+		r.Get("/search", user.Search)
 	})
 }
