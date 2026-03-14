@@ -29,7 +29,7 @@ func (v *Verifier) ParseAccess(tokenStr string) (int64, error) {
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok || token.Valid {
+	if !ok || !token.Valid {
 		return 0, errors.New("invalid token")
 	}
 
