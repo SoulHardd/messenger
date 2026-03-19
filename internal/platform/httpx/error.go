@@ -6,6 +6,8 @@ type HTTPError struct {
 }
 
 var (
-	ErrInvalidJSON    = HTTPError{Code: 400, Message: `{"error": "Invalid JSON"}`}
-	ErrInternalServer = HTTPError{Code: 500, Message: `{"error": "Internal server error"}`}
+	ErrInvalidJSON    = HTTPError{Code: 400, Message: `{"error": "invalid JSON"}`}
+	ErrInvalidQuery   = HTTPError{Code: 400, Message: `{"error": "invalid query parameter"}`}
+	ErrInternalServer = HTTPError{Code: 500, Message: `{"error": "internal server error"}`}
+	ErrUnauthorized   = HTTPError{Code: 401, Message: `{"error": "unauthorized"}`}
 )
