@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"D/Go/messenger/internal/platform/pointers"
 	"D/Go/messenger/internal/user/domain"
 	"context"
 	"errors"
@@ -47,9 +48,9 @@ func (r *Repository) GetByUserId(ctx context.Context, userId int64) (*domain.Pro
 
 	return &domain.Profile{
 		UserId:    p.UserId,
-		Nickname:  strPtrValue(p.Nickname),
-		Bio:       strPtrValue(p.Bio),
-		AvatarURL: strPtrValue(p.AvatarURL),
+		Nickname:  pointers.ZeroIfNil(p.Nickname),
+		Bio:       pointers.ZeroIfNil(p.Bio),
+		AvatarURL: pointers.ZeroIfNil(p.AvatarURL),
 	}, nil
 }
 
@@ -127,20 +128,13 @@ func (r *Repository) Search(ctx context.Context, queryStr string, limit int) ([]
 		}
 		domainProfile := domain.Profile{
 			UserId:    p.UserId,
-			Nickname:  strPtrValue(p.Nickname),
-			Bio:       strPtrValue(p.Bio),
-			AvatarURL: strPtrValue(p.AvatarURL),
-			Login:     strPtrValue(p.Login),
+			Nickname:  pointers.ZeroIfNil(p.Nickname),
+			Bio:       pointers.ZeroIfNil(p.Bio),
+			AvatarURL: pointers.ZeroIfNil(p.AvatarURL),
+			Login:     pointers.ZeroIfNil(p.Login),
 		}
 		profiles = append(profiles, domainProfile)
 	}
 
 	return profiles, nil
-}
-
-func strPtrValue(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
