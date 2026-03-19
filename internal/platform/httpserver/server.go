@@ -1,33 +1,32 @@
 package httpserver
 
 import (
-	httpAuth "D/Go/messenger/internal/auth/transport/http"
 	"D/Go/messenger/internal/platform/config"
 	authMW "D/Go/messenger/internal/platform/middleware/auth"
-	httpUser "D/Go/messenger/internal/user/transport/http"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
+	httpAuth "D/Go/messenger/internal/auth/transport/http"
+	httpChat "D/Go/messenger/internal/chat/transport/http"
+	httpUser "D/Go/messenger/internal/user/transport/http"
+
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Server struct {
 	HttpSrv *http.Server
 	r       *chi.Mux
 	cfg     *config.ServerConfig
-	db      *pgxpool.Pool
-	authMW  authMW.AuthMiddleware
 }
 
 func New(
 	cfg *config.ServerConfig,
-	pool *pgxpool.Pool,
 	auth *httpAuth.AuthController,
 	authMiddleware authMW.AuthMiddleware,
 	user *httpUser.UserController,
+	chat *httpChat.ChatController,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -36,14 +35,13 @@ func New(
 			Addr:    fmt.Sprintf(":%d", cfg.Port),
 			Handler: r,
 		},
-		r:      r,
-		cfg:    cfg,
-		db:     pool,
-		authMW: authMiddleware,
+		r:   r,
+		cfg: cfg,
 	}
 
 	s.setAuthRoutes(auth)
 	s.setUserRoutes(user, authMiddleware)
+	s.setChatRoutes(chat, authMiddleware)
 	return s
 }
 
@@ -74,5 +72,19 @@ func (s *Server) setUserRoutes(user *httpUser.UserController, authMiddleware aut
 		r.Patch("/me", user.UpdateProfile)
 		r.Get("/{login}", user.GetByLogin)
 		r.Get("/search", user.Search)
+	})
+}
+
+func (s *Server) setChatRoutes(chat *httpChat.ChatController, authMiddleware authMW.AuthMiddleware) {
+	s.r.Route("/api/v1/chat", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Post("/private", chat.CreatePrivateChat)
+		r.Post("/group", chat.CreateGroupChat)
+		r.Get("/chats", chat.GetUserChats)
+		r.Get("/{chat_id}", chat.GetUserChatById)
+		r.Get("/{chat_id}/participants", chat.GetChatParticipants)
+		r.Post("/participant", chat.AddParticipant)
+		r.Patch("/participant", chat.UpdateParticipantRole)
+		r.Delete("/participant", chat.DeleteParticipant)
 	})
 }

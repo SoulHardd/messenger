@@ -24,7 +24,7 @@ func New(service UserService) *UserController {
 func (c *UserController) GetMe(w http.ResponseWriter, r *http.Request) {
 	userId, ok := authMiddleware.UserId(r.Context())
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httpx.WriteErrorResponse(w, httpx.ErrUnauthorized, ErrorMapper{})
 		return
 	}
 
@@ -42,7 +42,7 @@ func (c *UserController) GetMe(w http.ResponseWriter, r *http.Request) {
 func (c *UserController) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	userId, ok := authMiddleware.UserId(r.Context())
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		httpx.WriteErrorResponse(w, httpx.ErrUnauthorized, ErrorMapper{})
 		return
 	}
 
