@@ -27,6 +27,13 @@ import (
 	partRepository "D/Go/messenger/internal/chat/repository/participant"
 	chatSrvc "D/Go/messenger/internal/chat/service"
 	chatCtrl "D/Go/messenger/internal/chat/transport/http"
+
+	messageChatRepository "D/Go/messenger/internal/message/repository/chat"
+	messageRepository "D/Go/messenger/internal/message/repository/message"
+	messagePartRepository "D/Go/messenger/internal/message/repository/participant"
+	messageStatusRepository "D/Go/messenger/internal/message/repository/status"
+	messageSrvc "D/Go/messenger/internal/message/service"
+	messageCtrl "D/Go/messenger/internal/message/transport/http"
 )
 
 func main() {
@@ -55,10 +62,17 @@ func main() {
 	chatService := chatSrvc.New(chatRepo, partRepo, pool)
 	chatController := chatCtrl.New(chatService)
 
+	messageRepo := messageRepository.New(pool)
+	messageStatusRepo := messageStatusRepository.New(pool)
+	messageChatRepo := messageChatRepository.New(pool)
+	messagePartRepo := messagePartRepository.New(pool)
+	messageService := messageSrvc.New(messageRepo, messageStatusRepo, messageChatRepo, messagePartRepo, nil, pool)
+	messageController := messageCtrl.New(messageService)
+
 	jwtVerifier := jwt.NewVerifier(cfg.JWTCfg.Secret)
 	authMiddleware := authMW.Auth(jwtVerifier)
 
-	srv := httpserver.New(cfg.ServerCfg, authController, authMiddleware, userController, chatController)
+	srv := httpserver.New(cfg.ServerCfg, authController, authMiddleware, userController, chatController, messageController)
 
 	authService.StartMonitorSessions(appCtx, cfg.TimeCfg.TokensMonitorInterval)
 
