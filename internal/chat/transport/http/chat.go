@@ -141,7 +141,7 @@ func (c *ChatController) GetChatParticipants(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	idStr := r.URL.Query().Get("chat_id")
+	idStr := chi.URLParam(r, "chat_id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		httpx.WriteErrorResponse(w, httpx.ErrInvalidQuery, ErrorMapper{})
