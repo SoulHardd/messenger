@@ -10,6 +10,7 @@ import (
 
 	httpAuth "D/Go/messenger/internal/auth/transport/http"
 	httpChat "D/Go/messenger/internal/chat/transport/http"
+	httpMsg "D/Go/messenger/internal/message/transport/http"
 	httpUser "D/Go/messenger/internal/user/transport/http"
 
 	"github.com/go-chi/chi/v5"
@@ -27,6 +28,7 @@ func New(
 	authMiddleware authMW.AuthMiddleware,
 	user *httpUser.UserController,
 	chat *httpChat.ChatController,
+	msg *httpMsg.MessageController,
 ) *Server {
 	r := chi.NewRouter()
 
@@ -42,6 +44,7 @@ func New(
 	s.setAuthRoutes(auth)
 	s.setUserRoutes(user, authMiddleware)
 	s.setChatRoutes(chat, authMiddleware)
+	s.setMessageRoutes(msg, authMiddleware)
 	return s
 }
 
@@ -86,5 +89,14 @@ func (s *Server) setChatRoutes(chat *httpChat.ChatController, authMiddleware aut
 		r.Post("/participant", chat.AddParticipant)
 		r.Patch("/participant", chat.UpdateParticipantRole)
 		r.Delete("/participant", chat.DeleteParticipant)
+	})
+}
+
+func (s *Server) setMessageRoutes(msg *httpMsg.MessageController, authMiddleware authMW.AuthMiddleware) {
+	s.r.Route("/api/v1/message", func(r chi.Router) {
+		r.Use(authMiddleware)
+		r.Post("/", msg.SendMessage)
+		r.Get("/{chat_id}", msg.GetMessages)
+		r.Post("/mark-as-read", msg.MarkAsRead)
 	})
 }
